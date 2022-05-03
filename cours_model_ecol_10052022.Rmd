@@ -1,0 +1,232 @@
+---
+title: "Cours_Modelisation_Ecologie"
+author: "Julie Louvrier"
+date: "10/5/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+# **Script R du cours "Modélisation en écologie"** 
+
+Le plan du script est le suivant
+
+* **Simulation d'une croissance exponentielle avec différentes valeurs de lamdba**: 
+  - lambda = 1.0355
+  - Lambda = 0.8
+  - Lambda = 1
+
+* **Analyses de données réelles : comptage de populations de grizzly dans le Parc National du Yellowstone**:
+  - *Chargement des données et analyses*:
+    - Estimation du taux de multiplicationet de la variance
+    
+  - *Comparaison données réelles vs modèle déterministe*:
+    - Production de la figure 
+ 
+* **Prise en compte de la stochasticité environnementale**:
+~ Simulations de projections de populations avec prise en compte de stochasticité 
+- Production de la figure 
+  
+
+## Chargement des packages
+```{r packages and workspace}
+library(popbio)
+library(tidyverse)
+library(scales)
+```
+
+
+## Simulation d'une croissance exponentielle avec différentes valeurs de lamdba
+```{r}
+rm(list=ls())               # tout nettoyer avant de commencer
+
+lambda1 <- 1.0355           # Taux de multiplication
+lambda2 = 0.8
+lambda3 = 1
+
+N0 <- 500                   # 500 individus au temps t0
+nyears <- 30                # Nombre d'années à projeter
+
+
+year <- seq(from=0, to=nyears, by=1)   # Séquence des années
+
+
+N1 <- numeric(nyears+1)     # Création d'un vecteur numérique qui va contenir les valeurs qui vont être calculées 
+N2 <- numeric(nyears+1)    # Création d'un second vecteur numérique qui va contenir les valeurs qui vont être calculées 
+N3 <- numeric(nyears+1)    # Création d'un troisième vecteur numérique qui va contenir les valeurs qui vont être calculées 
+
+names(N1) <- year    
+names(N2) <- year
+names(N3) <- year
+
+
+N1[1] <- N0                 # Première valeur est l'abondance au temps t0
+N2[1] <- N0                # Première valeur est l'abondance au temps t0
+N3[1] <- N0                # Première valeur est l'abondance au temps t0
+
+### Première simulation avec lambda = 1.0355 ###
+for (i in 2:(nyears+1)){   # Boucle for sur les années
+  N1[i] <- N1[i-1] * lambda1  # Multiplication de l'abondance au temps (t-1) par lambda
+}                          # Fin de la boucle for
+
+N1                          # Observons ce que nous avons pour N
+
+### Deuxième simulation avec lambda = 0.8 ###
+for (i in 2:(nyears+1)){      # Boucle for sur les années
+  N2[i] <- N2[i-1] * lambda2  # Multiplication de l'abondance au temps (t-1) par lambda
+}                             # Fin de la boucle for
+
+N2                            # Observons ce que nous avons pour N2
+
+### Troisième simulation avec lambda = 0.8 ###
+for (i in 2:(nyears+1)){      # Boucle for sur les années
+  N3[i] <- N3[i-1] * lambda3  # Multiplication de l'abondance au temps (t-1) par lambda
+}                             # Fin de la boucle for
+
+N3                            # Observons ce que nous avons pour N3
+
+
+
+plot(N1~year, col = "#440154FF", pch = 19, ylim = c(0,1500))   # Production de la première figure
+points(N2~year, col = "#287D8EFF", pch = 19)   
+points(N3~year, col = "#DCE318FF", pch = 19)   
+
+```
+
+## Analyses de données réelles : comptage de populations de grizzly dans le Parc National du Yellowstone
+# Chargement des données et analyses
+```{r}
+# Regardons les données
+grizzly
+
+# Renomons les objets
+N <- grizzly$N
+Years <- grizzly$year
+
+# regardons ce à quoi cela ressemble
+ggplot(data = grizzly, aes(x = year, y = N))+
+  geom_line(color = "#00AFBB", size = 1)+
+  geom_point(color = "#00AFBB", size=2) +
+  theme_gray(base_size = 12)
+
+# Calculons le taux d'accroissement (mu) et variance environnementale (sigma2)
+# Calcul du log de l'abondance
+logN <- log(N[-1]/N[-length(N)]) # log(Nt+1) - log(Nt)
+# Taux d'accroissement
+mu <- mean(logN) 
+mu
+# Variance environmentale
+sigma2 <- var(logN) 
+sigma2
+
+# Trasformons afin d'obtenir lambda 
+lambda <- exp(mu) 
+lambda 
+```
+
+#Comparaison données réelles vs modèle déterministe
+```{r}
+#######
+lambdaGrizzly = lambda             # valeur du taux de multiplication estimé 
+N0Grizzly <- grizzly$N[1]          # 44 individus au temps t0
+nyears <- (nrow(grizzly) - 1)      # Nombre d'années à projeter
+
+
+year <- seq(from=1959, to=1997, by=1)    # Séquence des années
+NGrizzly <- numeric(nyears+1)            # Création d'un second vecteur numérique qui va contenir les valeurs qui vont être calculées 
+
+names(NGrizzly) <- year                 
+NGrizzly[1] <- N0Grizzly                # Première valeur est l'abondance au temps t0
+
+### Simulation avec le lambda estimé ###
+for (i in 2:(nyears+1)){  
+  NGrizzly[i] <- NGrizzly[i-1] * lambdaGrizzly  
+}                         
+
+NGrizzly                                # Observons ce que nous avons pour N3 
+
+# Réarrangement pour pouvoir utiliser ggplot
+grizzly2 <- cbind (grizzly, NGrizzly)
+
+# Figure
+ggplot(data = grizzly, aes(x = year, y = N))+
+  geom_line(color = "#00AFBB", size = 1)+
+  geom_point(color = "#00AFBB", size=2) +
+  theme_gray(base_size = 12) +
+  geom_point(aes(x = year, y = NGrizzly), color = "#287D8EFF", size=2)
+  
+```
+
+## Prise en compte de la stochasticité environnementale
+#Simulations de projections de populations avec prise en compte de stochasticité 
+```{r}
+# Projection de la population
+n0 <- grizzly$N[1] # Population initiale en 1959
+n0
+
+T <-  50 # Années pour projeter
+
+# Nombre de simulations 
+runs <- 500  
+
+# Matrice vide pour recevoir les résultats     
+stoch.pop <- matrix(NA,T,runs) 
+stoch.pop[1,] <- n0 # initiate
+
+# Seuil de quasi-extinction
+Ne <- 30
+
+# Projection de la population
+for (i in 1:runs){ # Boucle sur les simulations
+  for (t in 2:T){	# Boucle sur les années
+    # Tire r dans une loi normale en utilisant les estimations de mu et sigma2
+    r <- rnorm(1,mu,sqrt(sigma2)) 
+    # Back-transform pour avoir lambda et l'abondance
+    lambda <- exp(r) 
+    # Projection de l'abondance à partir de l'abondance à t-1
+    stoch.pop[t,i]=stoch.pop[(t-1),i]*lambda 
+    # Sort de la boucle si abondance <= seuil
+    if(stoch.pop[t,i]<=Ne){ 
+      stoch.pop[t,i] <- 0 
+      i < i+1}  
+  }
+}
+
+# Regardons les résultats
+View(stoch.pop)
+
+
+## Abondance moyenne avec interval de confiance 
+pop.mean <- apply(stoch.pop,1,mean, na.rm=T)
+log.pop.sd <- apply(log(stoch.pop+0.00001),1,sd, na.rm=T)
+ucl <- exp(log(pop.mean) + 1.96 * log.pop.sd)     # Limite supérieure
+lcl <- exp(log(pop.mean) - 1.96 * log.pop.sd)     # Limite inférieure
+
+dataproj <- data.frame(year = grizzly$year[1] : (grizzly$year[1] + (T-1)),
+                       pop.mean = pop.mean,
+                       low = ucl,
+                       up = lcl,
+                       N = c(grizzly$N, rep(NA, T-length(grizzly$N) )))
+
+# Figure
+p <- ggplot(dataproj, aes(year)) + 
+  geom_line(aes(y=log(pop.mean)), colour="blue") + 
+  geom_ribbon(aes(ymin=log(low), ymax=log(up)), alpha=0.2)
+p +  geom_line(aes(y=log(N)), colour="#00AFBB") +
+  geom_point(aes(y=log(N)), colour="#00AFBB") +
+  ylab("log(Popiulation size)") +
+  xlab("Time steps")
+```
+
+```{r}
+sessionInfo()
+```
+
+
+
+
+
+
+
+
